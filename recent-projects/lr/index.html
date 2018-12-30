@@ -4,7 +4,7 @@
     <meta name="generator" content="Hugo 0.17" />
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Let&#39;s Rock! &ndash; Nikolay Turpitko, Software Developer</title>
+    <title>Let&#39;s Rock! &ndash; Nikolay Turpitko, Software Developer, Freelancer</title>
     
     
     <link rel="canonical" href="https://nikolay-turpitko.github.io/recent-projects/lr/">
@@ -107,13 +107,165 @@
   <h1>Let&#39;s Rock!</h1>
   
 
-<h2 id="let-s-rock">Let&rsquo;s Rock!</h2>
+<p><a href="https://letsrock.today">https://letsrock.today</a></p>
+
+<p><a href="https://play.google.com/store/apps/details?id=today.letsrock.client">At the Google Play</a></p>
+
+<p><a href="https://github.com/letsrock-today">We</a> started this project along with
+<a href="https://ru.linkedin.com/in/ustinovandrey">colleague and a friend of mine</a> a
+couple of years ago.  Our main goal was to learn Go programming language, Linux
+programming environment, and all the things, required for modern web
+programming, especially free and open source tools, techniques and practises -
+all that stuff, which we were discouraged to use during years of the work in
+the Java/enterprise environment.</p>
+
+<p>This is an ongoing project, it is neither completely finished nor abandoned.
+We are doing it in our spare time, and it is not fully functional yet.</p>
+
+<p>Sources are in the private repository. We hope to open it some day, but right
+now we are ashamed to do this. I may show some parts as a code sample by request.
+But the whole repository contains some sensitive parts. However, we started to
+extract authentication code from this project into open-source one, see
+<a href="../authkit">authkit</a>.</p>
+
+<p>Basically, our server uses public API of several ticket sellers (similar to
+<a href="https://seatgeek.com/">SeatGeek</a>) to retrieve information about entertainment
+events into our database, index it and provide better search and filtering, as
+well as additional features, like push notifications about new events,
+conforming user-defined criteria. We also planned some social aspects, but
+haven&rsquo;t implemented these ideas yet. Another planned, but not implemented yet
+feature is to enrich information about events from the public media (Youtube,
+Wikipedia, etc). So, basically, our app is an aggregator. But we are trying to
+provide some additional services to the end user, and not pretend to be a
+reseller. We do not (and not going to) sell anything within our app, we forward
+traffic back to the partner site (with referral code, of course). This model is
+not going to be very lucrative, but it&rsquo;s OK for start.</p>
+
+<p>So far we created:</p>
 
 <ul>
-<li><p>line 1</p></li>
-
-<li><p>line 2</p></li>
+<li>back-end server on Go,</li>
+<li>very basic web app (HTML5, <a href="riotjs.com/">Riot.js</a>),</li>
+<li>more functional native Android app,</li>
+<li>build and deployment automation scripts for the server.</li>
 </ul>
+
+<h2 id="server">Server</h2>
+
+<p>We use Go-based services (we call them &ldquo;modules&rdquo;) behind the
+<a href="https://nginx.org/en/">Nginx</a> server, working in the reverse proxy mode. Each
+service focused on one task, has its own database and API.  Architecture is
+not strictly &ldquo;micro-service&rdquo;, though, because services are relatively
+coarse-grained and, moreover, we allowed them to share databases in some cases.
+For example, we have services which populates data into the DB, and others that
+perform search and returns data to the client app via API, they necessarily
+share the same databases.</p>
+
+<p>We use <a href="https://redis.io/">Redis</a> and <a href="http://ledisdb.com/">LedisDB</a> (with
+<a href="http://leveldb.org/">LevelDB</a> back-end) databases, plus
+<a href="http://sphinxsearch.com/">Sphinx</a> search engine.  Redis we use for small
+frequently used objects (because Redis stores everything in RAM), LedisDB - for
+all other things (which are stored mostly on HDD, but with
+<a href="https://en.wikipedia.org/wiki/Memory-mapped_file">mmap</a> for faster read
+access), and Sphinx stores indexes mostly. Each service has several logical
+connections (we call them &ldquo;data sources&rdquo;) to the databases it needs. We are
+striving to logically separate data sources, though, currently they may reside
+within the same DB instance, and some services may use the same logical data
+source by necessity.</p>
+
+<p>We think, that with the current architecture we are well prepared to scale, if
+necessary. Actually, we haven&rsquo;t proved this in practice yet. Currently we deploy
+all the components onto the single virtual host with unix-socket connections
+between them. But, theoretically, we can deploy Nginx, (multiple instances of)
+every service and database (cluster) onto the separate nodes, using Nginx as a
+load balancer.</p>
+
+<p>We performed some stress tests on our current setup and monitored CPU, RAM and
+HDD consumption growth and estimated, that we can grow up to 10K simultaneous
+connections with only VDS hosting tariff plan upgrades, after that we have an
+option to deploy databases onto separate nodes, which can give us some time to
+prepare for the farther traffic growth. Still, it&rsquo;s all pure theoretical,
+actually we&rsquo;d be quite happy to become popular enought to have a small
+&ldquo;slashdot effect&rdquo;.</p>
+
+<p>We used <a href="www.gorillatoolkit.org/">Gorilla toolkit</a> and <a href="https://github.com/urfave/negroni">Negroni
+middleware</a> to implement services.  Each
+service deployed as a separate <a href="http://rpm.org/">RPM package</a> (we use <a href="https://www.centos.org/">CentOS
+Linux</a> in production).  Currently, to simplify
+deployment and version control, we use single super-package, containing only
+common initialization scripts and dependencies onto other app&rsquo;s packages.
+However, we can deploy packages independently almost without interruption.
+Services are completely stateless, behind the load balancer and we use graceful
+shutdown to minimize loss of active connections.</p>
+
+<p>We use <a href="https://www.freedesktop.org/wiki/Software/systemd/">systemd</a> to manage
+our services. It capable to detect if processes are stuck or dead and restart
+them automatically, if needed. We also used systemd&rsquo;s socket activation - mode
+with which client connects to the socket, managed by systemd, so, socket would not
+break if process crashed and restarted. We leveraged systemd&rsquo;s watchdog and
+have quite a few of systemd timers.</p>
+
+<p>One of the server&rsquo;s modules holds information about users. It also used as
+a request handler of <a href="http://nginx.org/en/docs/http/ngx_http_auth_request_module.html">Nginx&rsquo;s http auth request
+module</a>.  It
+implements OAuth2 3-legged flow with
+<a href="https://godoc.org/golang.org/x/oauth2">&ldquo;golang.org/x/oauth2&rdquo;</a>.  We started to
+re-write it as an open-source project (see <a href="../authkit">authkit</a>).</p>
+
+<h2 id="build-and-deployment-automation">Build and deployment automation</h2>
+
+<p>We started to implement our build automation logic when
+<a href="https://www.docker.com/">Docker</a> was young, and <a href="https://docs.docker.com/compose/">Docker
+Compose</a> was to be born yet, so, we created
+relatively complex make build to manage docker containers. We use docker
+containers to:</p>
+
+<ul>
+<li>build binary files from Go sources for dev-test (and optionally execute unit
+tests and lint),</li>
+<li>setup dev-test environment (to perform integration tests - with databases,
+Nginx, Sphinx, etc),</li>
+<li>build RPMs (unit tests and lint run again as a part of this build).</li>
+</ul>
+
+<p>After RPM files are created with docker, make executes Packer and Vagrant to
+prepare fresh test environment within virtual box, in which it executes tests
+of the deployment, undeployment and some integration tests. This environment
+closer resembles production, and allows us to find some issues which Docker
+doesn&rsquo;t. For example, that&rsquo;s how we test required permissions, selinux rules,
+etc.</p>
+
+<p>We also use make and bash scripts, to prepare production server and to deploy
+(or update) server application into production. No Puppet or Ansible at this
+point, just don&rsquo;t need them yet.</p>
+
+<h2 id="native-android-app">Native Android app</h2>
+
+<p>For this project we decided to use native Android app. I have had awful
+experiences with HTML5 / Apache Cordova app in <a href="../taxi">Taxi project</a>.</p>
+
+<p>In our Android application we used following libraries:</p>
+
+<ul>
+<li><a href="http://androidannotations.org/">Android Annotations</a>,</li>
+<li><a href="https://developer.android.com/training/volley/index.html">Volley</a>,</li>
+<li><a href="https://developer.android.com/training/material/lists-cards.html">CardView and
+RecyclerView</a>
+from support library,</li>
+<li><a href="https://firebase.google.com/">FireBase</a> for push notifications.</li>
+</ul>
+
+<p>To support custom OAuth2 login, we implemented <a href="https://developer.android.com/training/id-auth/custom_auth.html">Authenticator
+Service</a> and
+used WebViewClient to perform 3-legged flow (redirect user to the provider&rsquo;s
+login page).</p>
+
+<h2 id="web-app">Web app</h2>
+
+<p>There is not much to say about the web app. It is HTML5 single-page app, created
+with <a href="WebViewClient">Riot.js</a>. We used <a href="https://babeljs.io/docs/learn-es2015/">es6
+(babel)</a>, <a href="https://www.npmjs.com/">npm</a>,
+<a href="https://webpack.github.io/">webpack</a> and <a href="i18next.com/">i18next</a>.</p>
 
 </main>
     <footer>

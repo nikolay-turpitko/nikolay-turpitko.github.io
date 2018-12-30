@@ -4,7 +4,7 @@
     <meta name="generator" content="Hugo 0.17" />
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>authkit &ndash; Nikolay Turpitko, Software Developer</title>
+    <title>authkit &ndash; Nikolay Turpitko, Software Developer, Freelancer</title>
     
     
     <link rel="canonical" href="https://nikolay-turpitko.github.io/recent-projects/authkit/">
@@ -105,17 +105,44 @@
 </header>
     <main>
   <h1>authkit</h1>
-  
+  <p><a href="https://github.com/letsrock-today/authkit">https://github.com/letsrock-today/authkit</a></p>
 
-<h2 id="authkit">authkit</h2>
+<p>This project is half-finished, but the only one (of my projects) yet with a
+publicly available source code (all others are in private repositories, or an
+intellectual property of my clients or former employers).</p>
 
-<ul>
-<li><p>line 1</p></li>
+<p><a href="https://github.com/letsrock-today">We</a> started it to extract boilerplate auth
+code from the other <a href="../lr">our project</a> - <a href="https://letsrock.today">&ldquo;Let&rsquo;s Rock!&rdquo;</a> (LR).</p>
 
-<li><p>line 2</p></li>
+<p>As LR project itself, we are developing authkit with a <a href="https://ru.linkedin.com/in/ustinovandrey">fellow
+developer</a>.</p>
 
-<li><p>line 3</p></li>
-</ul>
+<p>Currently, for the authentication in the LR we use Nginx module, which we
+created using Go, <code>&quot;golang.org/x/oauth2&quot;</code> and <code>&quot;github.com/dgrijalva/jwt-go&quot;</code>.
+But, retrospecting it, we found, that we created more custom code than it deem
+to be necessary and it is a bit entangled.</p>
+
+<p>However, it seems that we have a couple of useful pieces of code, which we would
+be glad to reuse in our future projects,  and something might be even useful
+for other developers.  Of course, we&rsquo;d benefit if someone starts to use our code
+and contribute to it. So, we decided to publish it on Github under MIT license.</p>
+
+<p>We have not finished to re-implement all the parts, we already had in LR, yet.
+It&rsquo;s not going so fast, as we hope initially, because we are trying to re-think
+our code, make it more simple and use as much ready libraries as possible.
+Also, we decided to do slightly more, than we already had in LR. For example,
+we blended <a href="https://github.com/ory-am/hydra">Hydra</a> and
+<a href="https://github.com/labstack/echo">Echo</a> into it.</p>
+
+<p>So, we hope that when we reintegrate authkit back into LR, we&rsquo;ll have more
+secure, complete and, at the same time, more simple solution than we already
+have.</p>
+
+<p>There is nothing much to say about this project. We made it open, everyone can
+check it out, skim through the
+<a href="https://github.com/letsrock-today/authkit/blob/master/README.md">README</a>, see
+the code, execute demo using Docker Composer, follow it, give us a star, fork
+and experiment with it, create an issue or send us a PR.</p>
 
 </main>
     <footer>
